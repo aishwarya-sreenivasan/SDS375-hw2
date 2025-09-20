@@ -1,0 +1,188 @@
+---
+title: "Homework 2 Report"
+output: html_document
+---
+
+
+## Aishwarya Sreenivasan
+
+### Setup
+
+Read in the data with `read_csv()` and store the data as an R object named `dataset`. Check the data to make sure all of the expected observations and variables are there.
+
+
+```{r warning=FALSE, message=FALSE}
+## Load the data and any necessary packages here.
+library(tidyverse)
+library(ggplot2)
+dataset <- read_csv("maacs.csv.gz")
+```
+
+## Part 1
+
+We will first consider the relationship between FEV1 and age. In general, it is expected that as children get older (and hence, larger in size), their FEV1 values should get higher. 
+
+Consider the statement "FEV1 values in children are higher in older children relative to younger children". 
+
+Write a function in R that takes the `dataset` object as an argument and returns `TRUE` if the statement above is true for the dataset and `FALSE` otherwise. 
+
+NOTE: In order to write this function, you will need to translate the statement above into something that can be checked with the data. There are many ways in which you can do that translation correctly and you only need to pick one way here. 
+
+NOTE: For this part, do not use any plots.
+
+```{r warning=FALSE}
+## Write your function here
+
+# This code calculates the difference in average fev1 values between those younger than the median age and those older than the median age.
+fev1_age <- function(data) {
+  median_age <- median(data$age, na.rm = TRUE)
+  younger <- subset(data, age < median_age)
+  older <- subset(data, age >= median_age)
+  mean_young <- mean(younger$fev1, na.rm = TRUE)
+  mean_old <- mean(older$fev1, na.rm = TRUE)
+  return(mean_old > mean_young)
+}
+fev1_age(dataset)
+```
+The output of this function shows that on average, older children tend to have a greater value of fev1 in relation to younger children.
+
+## Part 2
+
+Fit a linear regression model with FEV1 as the outcome and age as a predictor.
+
+How much does FEV1 change for a 1-year increase in the child's age? 
+
+0.17 liters.
+
+```{r warning=FALSE}
+## Add your code here
+
+# Regression model to find the relationship between age and fev1 value.
+model <- lm(dataset$fev1~dataset$age)
+model
+```
+
+Write your data analysis statement interpreting the regression model here:
+
+The estimated coefficient for the age variable is 0.17. The interpretation of the coefficient is that every one year increase in age is associated with a 0.17 liter increase in fev1 on average.
+
+## Part 3
+
+Develop **three** supporting premises derived from the data that support the statement you wrote in Part 2. These can be plots, other summary statistics, or model results.
+
+NOTE: At least one supporting premise should use a plot.
+
+```{r warning=FALSE}
+## Add your code here
+
+#The scatterplot of age versus fev1 shows a clear positive trend
+scatterplot <- plot(dataset$age, dataset$fev1,
+                    main = "Relationship Between Age and FEV1",
+                    xlab = "Age (years)",
+                    ylab = "FEV1 (liters)",
+                    pch = 19)
+
+# t-test and p-values for testing the significance
+tstat <- coef(summary(model))["dataset$age", "t value"]
+pval <- coef(summary(model))["dataset$age", "Pr(>|t|)"]
+
+# Correlation between age and fev1 value
+agefev1_cor <- cor(dataset$age, dataset$fev1, use = "complete.obs")
+```
+
+
+Write the three supporting premise statements here:
+
+1. The scatterplot of age versus fev1 indicates a clear, upward trend, indicating that fev1 tends to increase with age.
+
+2. The significance test on the age coefficient yields a signficant p-value, validating that a 0.17 coefficient is statistically meaningful.
+
+3. The correlation between age and fev1 value for children is positive and greater than or equal to 0.80.
+
+
+## Part 4
+
+For each of the supporting premises above, write a function that takes the `dataset` object as an argument and returns `TRUE` if the supporting premise statement above is true for the dataset and `FALSE` otherwise. 
+
+For statements involving plots, instead of returning `TRUE` or `FALSE`, you function should do two things:
+
+1. Produce the plot that is used in the statement
+
+2. Produce a hypothetical version of the plot in the event that the statement is true. This can be done using simulated data or by simply hand drawing a plot.
+
+Execute each of your function and show that the produce the expected output.
+
+```{r warning=FALSE}
+## Function for supporting premise statement 1
+set.seed(0912)
+
+# Scatterplot of age versus fev1
+premise1_scatter <- function(data){
+  # actual output
+  actual_plot <- plot(dataset$age, dataset$fev1, 
+      main = "Relationship Between Age and FEV1",
+      xlab = "Age (years)",
+      ylab = "FEV1 (liters)",
+      pch = 19)
+  
+  # hypothetical output
+  # hypothetical dataset
+  hyp_age <- runif(150, min(dataset$age), max(dataset$age)) 
+  hyp_fev1 <- hyp_age*0.17 + rnorm(150, 0, 0.25)
+  hyp_dataset <- tibble(hyp_age, hyp_fev1)
+  hyp_plot <- plot(hyp_dataset$hyp_age, hyp_dataset$hyp_fev1,
+      main = "Hypothetical Relationship Between Age and FEV1",
+      xlab = "Age (years)",
+      ylab = "FEV1 (liters)",
+      pch = 19)
+  print(actual_plot)
+  print(hyp_plot)
+}
+
+premise1_scatter(dataset)
+```
+
+The first scatterplot supports the premise since there is a clear upward trend in the data points that show that as age increases, fev1 also tends to increase. The hypothetical scatterplot made with simulated data further supports this as it shows a very similar pattern as the plot with the actual data.
+
+
+```{r warning=FALSE}
+## Function for supporting premise statement 2
+
+# Significance test of coefficient
+premise2 <- function(data) {
+  model <- lm(data$fev1 ~ data$age)
+  tstat <- coef(summary(model))["data$age", "t value"]
+  pval <- coef(summary(model))["data$age", "Pr(>|t|)"]
+  return(pval < 0.05)
+}
+premise2(dataset)
+```
+This premise supports the statement, as the t-test for the age coefficient yields a t-statistic of 15.58 and p < 0.001, indicating that the 0.17 liter increase per year in fev1 is statistically significant and not due to random variation.
+
+
+```{r warning=FALSE}
+## Function for supporting premise statement 3
+
+# Correlation between age and fev1 value
+premise3 <- function(data){
+  agefev1_cor <- cor(data$age, data$fev1, use="complete.obs")
+  return (agefev1_cor >=0.8)
+}
+premise3(dataset)
+```
+This premise supports the statement, as the function indicates that correlation between age and fev1 value for children is positive and greater than or equal to 0.80.
+
+Thus, based on the three premises being true and supporting the regression analysis is true, we can reasonably conclude that our statement, older children tend to have relatively higher FEV1 values, to be true.
+
+
+## Part 5
+
+Describe one alternative to the primary statement "FEV1 values in children are higher in older children relative to younger children". 
+
+ - One alternative to the primary statement is that FEV1 values in children are the same for older children and younger children.
+
+Create a fault tree for the alternative outcome describing how the alternative outcome could be realized in the data even if the primary statement were true.
+
+Your fault tree should be created as a separate image and does not need to be created in R. Upload the image of the fault tree to Canvas.
+
+
